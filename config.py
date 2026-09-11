@@ -13,7 +13,7 @@ DB_CONFIG = {
     "cursorclass": pymysql.cursors.DictCursor,
 }
 
-# SECRET_KEY：优先从环境变量读取，否则使用默认值（小范围使用场景）
-# 如需更高安全性，设置环境变量 SECRET_KEY
-_DEFAULT_SECRET = "study-checkin-tomato-2024-secret-key-fixed-default"
-SECRET_KEY = os.environ.get("SECRET_KEY") or _DEFAULT_SECRET
+# SECRET_KEY：必须从环境变量读取，切勿使用硬编码默认值
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("请设置环境变量 SECRET_KEY，例如: export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(32))')")

@@ -1,0 +1,4 @@
+Flask>=3.0
+pymysql>=1.1
+Flask-WTF>=1.2
+DBUtils>=3.0

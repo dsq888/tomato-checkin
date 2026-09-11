@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}首页 - 学习打卡系统{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+{% block content %}
+
+<!-- 番茄装饰区域 -->
+<div class="card" style="text-align: center; padding: 40px 24px; background: linear-gradient(135deg, #FFF5F3 0%, #FFFFFF 50%, #FFF5F3 100%);">
+    <div style="font-size: 64px; margin-bottom: 12px; line-height: 1;">🍅</div>
+    <div style="font-size: 22px; font-weight: 600; color: var(--tomato); margin-bottom: 8px;">今天也要加油哦！</div>
+    <div style="font-size: 14px; color: var(--text-secondary);" id="today-date"></div>
+</div>
+
+<!-- 励志鸡汤 -->
+<div class="card" style="text-align: center; padding: 20px 24px;">
+    <div class="quote-text" id="quote" style="font-size: 16px; font-weight: 500; line-height: 1.6; color: #333;"></div>
+    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 6px;">—— 每日一句</div>
+</div>
+
+<!-- 倒计时 -->
+<div class="card" style="text-align: center;">
+    <div class="card-header" style="justify-content: center;">
+        倒计时
+        <a href="/countdown/settings" class="btn btn-outline btn-sm" style="margin-left: 12px;">设置</a>
+    </div>
+    {% if countdown %}
+    <div style="font-size: 48px; font-weight: 700; color: var(--tomato); margin: 8px 0;" id="countdown-days">{{ days_left }}</div>
+    <div style="font-size: 16px; color: var(--text-secondary);">距离 <strong>{{ countdown.title }}</strong></div>
+    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">目标日期：{{ countdown.target_date }}</div>
+    {% else %}
+    <div class="empty-state">
+        <div class="icon">📅</div>
+        <p>还没有设置倒计时目标</p>
+        <a href="/countdown/settings" class="btn btn-primary btn-sm">立即设置</a>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+// 每日励志语录
+const quotes = [
+    "每一个不曾起舞的日子，都是对生命的辜负。",
+    "自律即自由，今天的努力是明天的底气。",
+    "你只管努力，剩下的交给时间。",
+    "种一棵树最好的时间是十年前，其次是现在。",
+    "成功的路上并不拥挤，因为坚持的人不多。",
+    "今天比昨天好，这就是希望。",
+    "没有白走的路，每一步都算数。",
+    "所有的胜利，都是有备而来。",
+    "优秀是一种习惯，不是一时兴起。",
+    "比你优秀的人比你还努力，你凭什么不拼？",
+    "路虽远，行则将至；事虽难，做则必成。",
+    "星光不问赶路人，时光不负有心人。",
+    "唯有行动，可破焦虑。",
+    "你的时间花在哪，你的人生就在哪。",
+    "不要假装努力，结果不会陪你演戏。",
+];
+(function() {
+    const today = new Date();
+    const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+    const dateStr = today.getFullYear() + '年' + (today.getMonth() + 1) + '月' + today.getDate() + '日 ' + weekdays[today.getDay()];
+    document.getElementById("today-date").textContent = dateStr;
+    const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 86400000);
+    document.getElementById("quote").textContent = quotes[dayOfYear % quotes.length];
+})();
+</script>
+{% endblock %}

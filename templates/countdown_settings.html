@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}倒计时设置 - 番茄打卡{% endblock %}
+{% block content %}
+<div class="form">
+    <div class="card">
+        <div class="card-header">设置倒计时目标</div>
+        <form method="POST" action="/countdown/save">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label>目标名称</label>
+                <input type="text" name="title" placeholder="如：高考、考研、项目交付" value="{{ countdown.title if countdown else '' }}" required autofocus>
+            </div>
+            <div class="form-group">
+                <label>目标日期</label>
+                <input type="date" name="target_date" value="{{ countdown.target_date if countdown else '' }}" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">保存</button>
+        </form>
+        {% if countdown %}
+        <form method="POST" action="/countdown/delete" style="margin-top: 12px;" onsubmit="return confirm('确认删除？')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger btn-sm btn-block">删除目标</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

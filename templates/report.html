@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}学习报告 - 番茄打卡{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+{% block head %}
+<script src="/static/chart.min.js"></script>
+<style>
+.chart-container { position: relative; height: 350px; max-width: 500px; margin: 0 auto; }
+.summary-card { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.summary-item { text-align: center; padding: 16px; background: #FFF9F5; border-radius: 10px; }
+.summary-val { font-size: 24px; font-weight: 700; color: var(--tomato); }
+.summary-label { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">学习报告</div>
+    <div class="metric-tabs">
+        <a href="/report?period=day" class="metric-tab {% if period == 'day' %}active{% endif %}">日报</a>
+        <a href="/report?period=week" class="metric-tab {% if period == 'week' %}active{% endif %}">周报</a>
+        <a href="/report?period=month" class="metric-tab {% if period == 'month' %}active{% endif %}">月报</a>
+        <a href="/report?period=year" class="metric-tab {% if period == 'year' %}active{% endif %}">年报</a>
+    </div>
+
+    {% if data %}
+    {% set total = data | map(attribute='total_seconds') | sum %}
+    <div class="summary-card">
+        <div class="summary-item">
+            <div class="summary-val">{{ (total // 60) }}</div>
+            <div class="summary-label">总分钟</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-val">{{ (total // 3600) }}</div>
+            <div class="summary-label">总小时</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-val">{{ data | length }}</div>
+            <div class="summary-label">内容项</div>
+        </div>
+    </div>
+    <div class="chart-container">
+        <canvas id="pieChart"></canvas>
+    </div>
+    <table class="rank-table" style="margin-top: 20px;">
+        <thead><tr><th>学习内容</th><th>时长</th><th>占比</th></tr></thead>
+        <tbody>
+            {% for item in data %}
+            <tr>
+                <td>{{ item.title }}</td>
+                <td>{{ item.total_seconds | format_duration }}</td>
+                <td>{{ (item.total_seconds / total * 100) | round(1) }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <div class="icon">📊</div>
+        <p>本期暂无学习数据</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+{% if data %}
+<script>
+const colors = [
+    '#E74C3C', '#F1948A', '#2ECC71', '#ABEBC6', '#F39C12',
+    '#E67E22', '#1ABC9C', '#3498DB', '#9B59B6', '#E91E63',
+    '#FF6B6B', '#27AE60', '#F5A623', '#8E44AD'
+];
+const labels = [{% for item in data %} "{{ item.title }}", {% endfor %}];
+const data = [{% for item in data %} {{ item.total_seconds }}, {% endfor %}];
+new Chart(document.getElementById('pieChart'), {
+    type: 'pie',
+    data: { labels, datasets: [{ data, backgroundColor: colors.slice(0, data.length) }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+});
+</script>
+{% endif %}
+{% endblock %}

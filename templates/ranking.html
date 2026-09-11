@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}排行榜 - {{ group.name }} - 番茄打卡{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        {{ group.name }} - 排行榜
+        <a href="/groups/{{ group.id }}" class="btn btn-outline btn-sm">返回小组</a>
+    </div>
+
+    <!-- 指标切换 -->
+    <div class="metric-tabs">
+        <a href="/ranking/{{ group.id }}?metric=duration" class="metric-tab {% if metric == 'duration' %}active{% endif %}">总学习时长</a>
+        <a href="/ranking/{{ group.id }}?metric=days" class="metric-tab {% if metric == 'days' %}active{% endif %}">打卡天数</a>
+        <a href="/ranking/{{ group.id }}?metric=consecutive" class="metric-tab {% if metric == 'consecutive' %}active{% endif %}">连续打卡</a>
+    </div>
+
+    {% if data %}
+    <table class="rank-table">
+        <thead>
+            <tr>
+                <th style="width: 50px; text-align: center;">排名</th>
+                <th>昵称</th>
+                {% if metric == 'duration' %}
+                <th>总学习时长</th>
+                {% elif metric == 'days' %}
+                <th>打卡天数</th>
+                {% elif metric == 'consecutive' %}
+                <th>连续打卡天数</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data %}
+            <tr class="{% if row.id == session.user_id %}highlight{% endif %}">
+                <td class="rank-num">
+                    {% if loop.index == 1 %}
+                    <span class="rank-1">🥇</span>
+                    {% elif loop.index == 2 %}
+                    <span class="rank-2">🥈</span>
+                    {% elif loop.index == 3 %}
+                    <span class="rank-3">🥉</span>
+                    {% else %}
+                    {{ loop.index }}
+                    {% endif %}
+                </td>
+                <td>{{ row.nickname }}{% if row.style_tag %} <span class="style-tag">{{ row.style_tag }}</span>{% endif %}{% if row.id == session.user_id %} <span class="tag tag-tomato">我</span>{% endif %}</td>
+                {% if metric == 'duration' %}
+                <td>{{ row.total_duration | format_duration }}</td>
+                {% elif metric == 'days' %}
+                <td>{{ row.total_days }} 天</td>
+                {% elif metric == 'consecutive' %}
+                <td>{{ row.consecutive_days }} 天</td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><p>暂无排行数据</p></div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}创建小组 - 学习打卡系统{% endblock %}
+{% block content %}
+<div class="form">
+    <div class="card">
+        <div style="text-align: center; font-size: 48px; margin-bottom: 8px;">🍅</div>
+        <div class="card-header">番茄打卡 - 创建小组</div>
+        {% if error %}<div class="msg msg-error">{{ error }}</div>{% endif %}
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label>小组名称</label>
+                <input type="text" name="name" required autofocus>
+            </div>
+            <div class="form-group">
+                <label>小组描述（可选）</label>
+                <textarea name="description" placeholder="介绍一下这个小组的学习目标"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">创建</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

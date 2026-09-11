@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}番茄学习打卡{% endblock %}</title>
+    <style>
+        /* 番茄主题颜色变量 */
+        :root {
+            --tomato: #E74C3C;
+            --tomato-dark: #C0392B;
+            --tomato-light: #F1948A;
+            --leaf: #2ECC71;
+            --leaf-light: #ABEBC6;
+            --bg: #F8FDFA;
+            --card: #FFFFFF;
+            --text: #2C3E50;
+            --text-secondary: #7F8C8D;
+            --border: #E8F5E9;
+            --success: #2ECC71;
+            --warning: #F39C12;
+            --danger: #E74C3C;
+            --radius: 16px;
+            --shadow: 0 4px 12px rgba(231, 76, 60, 0.12);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            min-height: 100vh;
+            padding-bottom: 80px;
+            /* 背景装饰：角落藤蔓 */
+            position: relative;
+        }
+
+        /* 角落装饰 */
+        .tomato-decoration {
+            position: fixed;
+            z-index: 0;
+            opacity: 0.15;
+            pointer-events: none;
+        }
+        .decor-left-bottom {
+            bottom: 0;
+            left: 0;
+            width: 120px;
+            height: 180px;
+        }
+        .decor-right-top {
+            top: 0;
+            right: 0;
+            width: 100px;
+            height: 150px;
+        }
+
+        /* 桌面端顶部导航 */
+        .navbar {
+            background: linear-gradient(135deg, var(--tomato) 0%, var(--tomato-light) 100%);
+            color: #fff; 
+            padding: 0 24px;
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            height: 56px;
+            box-shadow: var(--shadow);
+        }
+        .navbar-brand { 
+            font-size: 20px; 
+            font-weight: 700; 
+            color: #fff; 
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .navbar-nav { display: flex; gap: 8px; align-items: center; }
+        .navbar-nav a { 
+            color: rgba(255,255,255,0.9); 
+            text-decoration: none; 
+            padding: 6px 14px; 
+            border-radius: 20px; 
+            font-size: 14px; 
+            transition: all 0.2s; 
+        }
+        .navbar-nav a:hover { 
+            background: rgba(255,255,255,0.2); 
+            color: #fff; 
+        }
+        .navbar-nav .user-info { 
+            font-size: 13px; 
+            opacity: 0.9; 
+            margin-right: 8px; 
+        }
+        .navbar-nav .badge-admin { 
+            background: var(--leaf); 
+            color: #fff; 
+            padding: 2px 8px; 
+            border-radius: 10px; 
+            font-size: 11px; 
+            font-weight: 600; 
+            margin-left: 4px; 
+        }
+
+        /* 移动端底部 Tab 栏 */
+        .mobile-tabbar {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: #fff;
+            box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+            border-top: 1px solid var(--border);
+            z-index: 9998;
+        }
+        .tabbar-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            gap: 2px;
+        }
+        .tabbar-item.active {
+            color: var(--tomato);
+        }
+        .tabbar-item svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+        .tabbar-item span {
+            font-size: 10px;
+        }
+
+        /* 容器 */
+        .container { 
+            max-width: 800px; 
+            margin: 24px auto; 
+            padding: 0 16px; 
+            position: relative;
+            z-index: 1;
+        }
+        .container-wide { max-width: 1000px; }
+
+        /* 纯白圆角卡片 */
+        .card { 
+            background: var(--card); 
+            border-radius: var(--radius); 
+            padding: 20px; 
+            margin-bottom: 16px; 
+            box-shadow: var(--shadow); 
+            border: 1px solid var(--border);
+        }
+        .card-header { 
+            font-size: 18px; 
+            font-weight: 600; 
+            margin-bottom: 16px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            color: var(--text);
+        }
+
+        /* 表单 */
+        .form { 
+            max-width: 400px; 
+            margin: 60px auto; 
+        }
+        .form .card-header { 
+            text-align: center; 
+            font-size: 24px; 
+            display: block;
+            color: var(--tomato);
+        }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { 
+            display: block; 
+            font-size: 14px; 
+            font-weight: 500; 
+            margin-bottom: 6px; 
+            color: var(--text-secondary); 
+        }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%; 
+            padding: 12px 14px; 
+            border: 1px solid var(--border); 
+            border-radius: 10px;
+            font-size: 15px; 
+            transition: border-color 0.2s; 
+            outline: none;
+            background: #FAFFFC;
+        }
+        .form-group input:focus, .form-group textarea:focus { 
+            border-color: var(--tomato); 
+            box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1); 
+        }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+
+        /* 番茄风格按钮 */
+        .btn { 
+            display: inline-block; 
+            padding: 12px 24px; 
+            border: none; 
+            border-radius: 24px; 
+            font-size: 15px; 
+            font-weight: 500; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+            text-decoration: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .btn-primary { 
+            background: linear-gradient(135deg, var(--tomato) 0%, var(--tomato-light) 100%); 
+            color: #fff; 
+        }
+        .btn-primary:hover { 
+            background: linear-gradient(135deg, var(--tomato-dark) 0%, var(--tomato) 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+        }
+        .btn-success { background: var(--leaf); color: #fff; }
+        .btn-success:hover { background: #27AE60; }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-danger:hover { background: #C0392B; }
+        .btn-outline { 
+            background: #fff; 
+            color: var(--tomato); 
+            border: 1px solid var(--tomato); 
+        }
+        .btn-outline:hover { background: var(--tomato); color: #fff; }
+        .btn-sm { padding: 6px 14px; font-size: 13px; border-radius: 18px; }
+        .btn-block { display: block; width: 100%; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* 消息提示 */
+        .msg { padding: 12px 16px; border-radius: 10px; font-size: 14px; margin-bottom: 16px; }
+        .msg-error { background: #FFF5F5; color: var(--danger); border: 1px solid #FFE0E0; }
+        .msg-success { background: #F0FFF4; color: var(--success); border: 1px solid #D9F7E1; }
+        .msg-info { background: #E8F5E9; color: var(--leaf); border: 1px solid #C8E6C9; }
+
+        /* 列表 */
+        .list-item { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 14px 0; 
+            border-bottom: 1px solid var(--border); 
+        }
+        .list-item:last-child { border-bottom: none; }
+        .list-item-title { font-weight: 500; font-size: 15px; }
+        .list-item-sub { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+        /* 标签 */
+        .tag { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+        .tag-green { background: #F0FFF4; color: var(--success); }
+        .tag-tomato { background: #FFF1F0; color: var(--tomato); }
+        .tag-orange { background: #FFF7E6; color: #D46B08; }
+
+        /* 排行榜 */
+        .rank-table { width: 100%; border-collapse: collapse; }
+        .rank-table th, .rank-table td { 
+            padding: 12px 14px; 
+            text-align: left; 
+            border-bottom: 1px solid var(--border); 
+            font-size: 14px; 
+        }
+        .rank-table th { 
+            font-weight: 600; 
+            color: var(--text-secondary); 
+            font-size: 13px; 
+            background: #FAFFF8; 
+            border-radius: 8px;
+        }
+        .rank-table .rank-num { 
+            font-weight: 700; 
+            font-size: 16px; 
+            width: 50px; 
+            text-align: center; 
+        }
+        .rank-table .rank-1 { color: #F5A623; }
+        .rank-table .rank-2 { color: #8C8C8C; }
+        .rank-table .rank-3 { color: #D48806; }
+        .rank-table .highlight { background: #FFF9F0; }
+
+        /* 指标切换 */
+        .metric-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+        .metric-tab { 
+            padding: 6px 16px; 
+            border-radius: 20px; 
+            font-size: 13px; 
+            cursor: pointer; 
+            border: 1px solid var(--border); 
+            background: #fff; 
+            transition: all 0.2s; 
+            color: var(--text-secondary); 
+            text-decoration: none; 
+        }
+        .metric-tab.active { 
+            background: linear-gradient(135deg, var(--tomato) 0%, var(--tomato-light) 100%); 
+            color: #fff; 
+            border-color: var(--tomato); 
+        }
+        .metric-tab:hover:not(.active) { border-color: var(--tomato); }
+
+        /* 页脚 */
+        .form-footer { text-align: center; margin-top: 16px; font-size: 14px; color: var(--text-secondary); }
+        .form-footer a { color: var(--tomato); }
+
+        /* 小组网格 */
+        .group-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
+            gap: 16px; 
+        }
+        .group-card { 
+            border: 1px solid var(--border); 
+            border-radius: var(--radius); 
+            padding: 20px; 
+            transition: all 0.2s; 
+            cursor: pointer; 
+            text-decoration: none; 
+            color: var(--text); 
+            display: block;
+            background: #fff;
+        }
+        .group-card:hover { 
+            border-color: var(--tomato); 
+            box-shadow: 0 6px 16px rgba(231, 76, 60, 0.15); 
+            transform: translateY(-2px); 
+        }
+        .group-card .gc-name { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+        .group-card .gc-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
+        .group-card .gc-meta { font-size: 12px; color: var(--text-secondary); }
+
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-secondary); }
+        .empty-state .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+
+        /* 番茄悬浮计时器 */
+        .float-timer { 
+            position: fixed; 
+            bottom: 80px; 
+            right: 16px; 
+            z-index: 9999; 
+            display: none; 
+        }
+        .float-timer.show { display: block; }
+        .float-timer-toggle { 
+            width: 60px; 
+            height: 60px; 
+            border-radius: 50%; 
+            background: radial-gradient(circle at 35% 35%, #FF7B7B, var(--tomato));
+            color: #fff; 
+            border: 3px solid rgba(255,255,255,0.4);
+            cursor: pointer; 
+            box-shadow: 
+                0 4px 14px rgba(231, 76, 60, 0.4),
+                inset -2px -2px 8px rgba(0,0,0,0.2),
+                inset 2px 2px 8px rgba(255,255,255,0.2);
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            position: relative;
+        }
+        /* 玻璃高光 */
+        .float-timer-toggle::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 10px;
+            width: 16px;
+            height: 8px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 50%;
+            transform: rotate(-35deg);
+            z-index: 10;
+            pointer-events: none;
+        }
+        .float-timer-toggle.running {
+            animation: tomato-breathe 2s ease-in-out infinite;
+        }
+        @keyframes tomato-breathe {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* 番茄叶子 */
+        .ft-leaf {
+            position: absolute;
+            top: -8px;
+            right: 2px;
+            width: 16px;
+            height: 8px;
+            background: #2ECC71;
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            transform: rotate(30deg);
+            z-index: 10000;
+            pointer-events: none;
+            transition: background 2s ease;
+        }
+        .ft-leaf.wiggle {
+            animation: leaf-wiggle 0.6s ease-in-out infinite;
+        }
+        @keyframes leaf-wiggle {
+            0%, 100% { transform: rotate(30deg); }
+            25% { transform: rotate(35deg); }
+            75% { transform: rotate(25deg); }
+        }
+
+        /* 达标金番茄 */
+        .float-timer-toggle.golden {
+            box-shadow: 
+                0 0 24px rgba(255, 215, 0, 0.7),
+                0 4px 12px rgba(255, 165, 0, 0.4),
+                inset -2px -2px 8px rgba(0,0,0,0.1),
+                inset 2px 2px 8px rgba(255,255,255,0.3);
+        }
+
+        /* 粒子 */
+        .ft-particle {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particle-up 1.5s ease-out forwards;
+        }
+        .ft-particle.green {
+            background: #2ECC71;
+            box-shadow: 0 0 4px #2ECC71;
+        }
+        .ft-particle.gold {
+            background: #FFD700;
+            box-shadow: 0 0 4px #FFD700;
+        }
+        @keyframes particle-up {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+        }
+        .float-timer-panel { 
+            position: absolute; 
+            bottom: 70px; 
+            right: 0; 
+            width: 280px; 
+            max-height: 350px; 
+            overflow-y: auto; 
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px; 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15); 
+            padding: 12px; 
+            display: none; 
+            border: 1px solid var(--border);
+        }
+        .float-timer-panel.open { display: block; }
+        .float-timer-panel .ft-title { 
+            font-size: 14px; 
+            font-weight: 600; 
+            margin-bottom: 8px; 
+            color: var(--tomato); 
+        }
+        .ft-progress {
+            font-size: 11px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            margin-left: 4px;
+        }
+        .float-timer-panel .ft-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 8px 0; 
+            border-bottom: 1px solid var(--border); 
+        }
+        .float-timer-panel .ft-item:last-child { border-bottom: none; }
+        .float-timer-panel .ft-name { font-size: 13px; font-weight: 500; }
+        .float-timer-panel .ft-time { 
+            font-size: 16px; 
+            font-weight: 700; 
+            color: var(--tomato); 
+            font-variant-numeric: tabular-nums; 
+        }
+        .float-timer-panel .ft-actions { display: flex; gap: 4px; }
+        .float-timer-panel .ft-actions button { 
+            padding: 3px 8px; 
+            font-size: 11px; 
+            border-radius: 6px; 
+            border: 1px solid var(--border); 
+            background: #fff; 
+            cursor: pointer; 
+            transition: all 0.2s;
+        }
+        .float-timer-panel .ft-actions button:hover { transform: scale(1.05); }
+        .float-timer-panel .ft-actions .ft-pause { color: var(--warning); border-color: var(--warning); }
+        .float-timer-panel .ft-actions .ft-resume { color: var(--success); border-color: var(--success); }
+        .float-timer-panel .ft-actions .ft-end { color: var(--danger); border-color: var(--danger); }
+        .float-timer-panel .ft-input { display: flex; gap: 6px; margin-top: 8px; }
+        .float-timer-panel .ft-input input { 
+            flex: 1; 
+            padding: 6px 8px; 
+            border: 1px solid var(--border); 
+            border-radius: 8px; 
+            font-size: 12px;
+            background: #FAFFFC;
+        }
+        .float-timer-panel .ft-input button { 
+            padding: 6px 10px; 
+            background: linear-gradient(135deg, var(--tomato) 0%, var(--tomato-light) 100%); 
+            color: #fff; 
+            border: none; 
+            border-radius: 8px; 
+            font-size: 12px; 
+            cursor: pointer; 
+        }
+
+        /* 番茄打卡按钮 */
+        .btn-tomato-checkin {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: none;
+            background: radial-gradient(circle at 30% 30%, #FF6B6B, var(--tomato));
+            box-shadow: 
+                0 8px 20px rgba(231, 76, 60, 0.4),
+                inset -3px -3px 12px rgba(0,0,0,0.25),
+                inset 3px 3px 12px rgba(255,255,255,0.25);
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-tomato-checkin:active {
+            transform: scale(0.95);
+        }
+        .btn-tomato-checkin.cracked {
+            animation: tomato-crack 0.5s ease-out forwards;
+        }
+        @keyframes tomato-crack {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        /* 打卡日历 */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 3px;
+            text-align: center;
+            font-size: 12px;
+        }
+        .calendar-day-header {
+            font-weight: 600;
+            color: var(--text-secondary);
+            padding: 4px 0;
+            font-size: 11px;
+        }
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            background: #F8FAF8;
+            min-height: 38px;
+            position: relative;
+            cursor: default;
+        }
+        .calendar-day.empty {
+            background: transparent;
+        }
+        .calendar-day .day-num {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text);
+        }
+        .calendar-day .day-checkers {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1px;
+            justify-content: center;
+            margin-top: 1px;
+        }
+        .calendar-day .checker-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--tomato);
+        }
+        .calendar-day .checker-dot.me {
+            background: var(--leaf);
+            box-shadow: 0 0 4px rgba(46, 204, 113, 0.5);
+        }
+        .calendar-day.today {
+            border: 2px solid var(--tomato);
+            background: #FFF5F5;
+        }
+        .calendar-nav {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .calendar-nav button {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+        .calendar-nav button:hover {
+            border-color: var(--tomato);
+            color: var(--tomato);
+        }
+        .calendar-nav .cal-month {
+            font-weight: 600;
+            font-size: 14px;
+            min-width: 90px;
+            text-align: center;
+        }
+
+        /* 紧凑热力图 - 传统日历网格布局 */
+        .heatmap-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 3px;
+            max-width: 320px;
+            margin: 0 auto;
+        }
+        .heatmap-grid .heatmap-weekday-header {
+            text-align: center;
+            font-size: 10px;
+            color: #B0B0B0;
+            padding: 2px 0;
+        }
+        .heatmap-grid .heatmap-cell {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 3px;
+            background: #F0F0F0;
+            cursor: pointer;
+            transition: transform 0.15s;
+            position: relative;
+            min-width: 0;
+        }
+        .heatmap-grid .heatmap-cell:hover {
+            transform: scale(1.3);
+            z-index: 2;
+        }
+        .heatmap-grid .heatmap-cell.level-0 { background: #F0F0F0; }
+        .heatmap-grid .heatmap-cell.level-1 { background: #FFD4D4; }
+        .heatmap-grid .heatmap-cell.level-2 { background: #FF8A8A; }
+        .heatmap-grid .heatmap-cell.level-3 { background: #E74C3C; }
+        .heatmap-grid .heatmap-cell.today {
+            box-shadow: 0 0 0 2px #F39C12;
+        }
+        .heatmap-grid .heatmap-cell .heatmap-tooltip {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .heatmap-grid .heatmap-cell:hover .heatmap-tooltip {
+            display: block;
+        }
+
+        .heatmap-legend {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            font-size: 10px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+        .heatmap-legend .legend-cell {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+        .heatmap-legend .legend-cell.level-0 { background: #F0F0F0; }
+        .heatmap-legend .legend-cell.level-1 { background: #FFD4D4; }
+        .heatmap-legend .legend-cell.level-2 { background: #FF8A8A; }
+        .heatmap-legend .legend-cell.level-3 { background: #E74C3C; }
+
+        /* 折叠卡片 */
+        .card-collapsible .card-header {
+            cursor: pointer;
+            user-select: none;
+        }
+        .card-collapsible .collapse-arrow {
+            display: inline-block;
+            transition: transform 0.25s ease;
+            margin-left: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .card-collapsible.collapsed .collapse-arrow {
+            transform: rotate(-90deg);
+        }
+        .card-collapsible .card-body-collapse {
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .card-collapsible.collapsed .card-body-collapse {
+            max-height: 0 !important;
+        }
+
+        /* 风格标签 */
+        .style-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-left: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+        }
+
+        /* 双栏并排 */
+        .side-by-side {
+            display: flex;
+            gap: 16px;
+        }
+        .side-by-side > * {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* 响应式 */
+        @media (max-width: 600px) {
+            .container { 
+                padding: 0 12px; 
+                margin-top: 16px;
+            }
+            .card { 
+                padding: 16px; 
+            }
+            .navbar { 
+                display: none !important;
+            }
+            .mobile-tabbar {
+                display: flex;
+            }
+            .container {
+                padding-bottom: 16px;
+            }
+            .float-timer {
+                bottom: 80px;
+                right: 12px;
+            }
+            .float-timer-panel {
+                right: 0;
+                width: 260px;
+            }
+            .group-grid { grid-template-columns: 1fr; }
+            .decor-left-bottom, .decor-right-top {
+                opacity: 0.08;
+            }
+            .side-by-side {
+                flex-direction: column;
+            }
+        }
+
+        @media (min-width: 601px) {
+            .mobile-tabbar {
+                display: none !important;
+            }
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- 角落藤蔓装饰 SVG -->
+    <svg class="tomato-decoration decor-left-bottom" viewBox="0 0 120 180" xmlns="http://www.w3.org/2000/svg">
+        <path d="M110,180 C50,140 30,80 0,30 C20,60 50,90 80,120 C90,140 100,160 110,180 Z" fill="#2ECC71" opacity="0.3"/>
+        <ellipse cx="95" cy="130" rx="18" ry="12" fill="#2ECC71" opacity="0.4" transform="rotate(-20 95 130)"/>
+        <path d="M100 140 Q115 150 105 165" stroke="#27AE60" stroke-width="2" fill="none"/>
+        <path d="M85 120 Q100 130 90 145" stroke="#27AE60" stroke-width="2" fill="none"/>
+    </svg>
+    <svg class="tomato-decoration decor-right-top" viewBox="0 0 100 150" xmlns="http://www.w3.org/2000/svg">
+        <path d="M100,0 C70,40 50,80 10,120 C30,100 50,80 70,60 C80,40 90,20 100,0 Z" fill="#2ECC71" opacity="0.3"/>
+        <ellipse cx="30" cy="40" rx="16" ry="10" fill="#2ECC71" opacity="0.4" transform="rotate(20 30 40)"/>
+        <path d="M20 30 Q5 40 15 55" stroke="#27AE60" stroke-width="2" fill="none"/>
+        <path d="M35 25 Q20 35 30 50" stroke="#27AE60" stroke-width="2" fill="none"/>
+    </svg>
+
+    {% if session.user_id %}
+    <nav class="navbar">
+        <a href="/dashboard" class="navbar-brand">
+            🍅 番茄打卡
+        </a>
+        <div class="navbar-nav">
+            <a href="/dashboard">首页</a>
+            <a href="/groups">我的小组</a>
+            <a href="/report">学习报告</a>
+            <span class="user-info">
+                <a href="/settings" style="color: rgba(255,255,255,0.9); text-decoration: none;">{{ session.nickname }}</a>
+                {% if session.role == 'admin' %}<span class="badge-admin">管理员</span>{% endif %}
+            </span>
+        </div>
+    </nav>
+
+    <!-- 移动端底部 Tab -->
+    <div class="mobile-tabbar">
+        <a href="/dashboard" class="tabbar-item" id="tab-dashboard">
+            <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+            <span>首页</span>
+        </a>
+        <a href="/groups" class="tabbar-item" id="tab-groups">
+            <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 2.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+            <span>小组</span>
+        </a>
+        <a href="/report" class="tabbar-item" id="tab-report">
+            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+            <span>报告</span>
+        </a>
+        <a href="/settings" class="tabbar-item" id="tab-settings">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+            <span>我的</span>
+        </a>
+    </div>
+
+    <div class="container {% block container_class %}{% endblock %}">
+    {% endif %}
+        {% block content %}{% endblock %}
+    {% if session.user_id %}
+    </div>
+
+    <!-- 悬浮番茄计时器 -->
+    <div class="float-timer" id="float-timer">
+        <div style="position: relative; display: inline-block;">
+            <button class="float-timer-toggle" id="ft-toggle" onclick="toggleFloatPanel()" title="学习计时">
+            </button>
+            <div class="ft-leaf"></div>
+        </div>
+        <div class="float-timer-panel" id="ft-panel">
+            <div class="ft-title">🍅 学习计时 <span class="ft-progress" id="ft-progress">0%</span></div>
+            <div id="ft-list"></div>
+            <div class="ft-input" id="ft-input-area" style="display:none;">
+                <input type="text" id="ft-input" placeholder="输入学习内容...">
+                <button onclick="ftStart()">开始</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // HTML 转义，防止 XSS
+    function escHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s || '';
+        return d.innerHTML;
+    }
+
+    // ========== CSRF Token 自动注入 ==========
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    // 重写 fetch，自动添加 CSRF token
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options = {}) {
+        options.headers = options.headers || {};
+        // 如果 body 是 FormData，追加 csrf_token 字段
+        if (options.body instanceof FormData && csrfToken) {
+            options.body.append('csrf_token', csrfToken);
+        }
+        // 同时添加 X-CSRFToken header 作为兜底
+        if (csrfToken && !options.headers['X-CSRFToken']) {
+            options.headers['X-CSRFToken'] = csrfToken;
+        }
+        return originalFetch(url, options);
+    };
+
+    // ========== 全局悬浮番茄计时器 ==========
+    // 按用户ID隔离存储，不同账号互不影响
+    const userId = {{ session.user_id }};
+    const FT_KEY = 'study_timers_' + userId;
+    const TK_KEY = 'study_tokens_' + userId;  // device_token 独立存储，登出不丢失
+    let ftTimers = {};
+    let ftIntervals = {};
+    let ftSyncInterval = null;  // 只读模式定时同步
+    let _ftStarting = false;    // 防抖：防止连续点击创建多个计时
+
+    function ftFormat(sec) {
+        const sign = sec < 0 ? '-' : '';
+        sec = Math.abs(sec);
+        const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+        return sign + String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+    }
+
+    function ftLoad() {
+        const raw = localStorage.getItem(FT_KEY);
+        if (raw) {
+            try { ftTimers = JSON.parse(raw); } catch(e) { ftTimers = {}; }
+        }
+        // 清理损坏的条目和元数据条目
+        const cleaned = {};
+        for (const [sid, t] of Object.entries(ftTimers)) {
+            if (sid.startsWith('_')) continue;
+            if (!t || typeof t !== 'object' || !t.title || t.seconds === undefined) continue;
+            cleaned[sid] = t;
+        }
+        ftTimers = cleaned;
+        const now = Math.floor(Date.now() / 1000);
+        for (const [sid, t] of Object.entries(ftTimers)) {
+            if (t.status === 'running' && t.lastTick) {
+                t.seconds += (now - t.lastTick);
+                t.lastTick = now;
+            }
+        }
+        ftSave();
+        ftRender();
+        ftStartAllIntervals();
+        updateToggleAnimation();
+        // 如果有只读计时器，尝试启动同步（兜底，ftSetContext 也会触发）
+        for (const [sid, t] of Object.entries(ftTimers)) {
+            if (sid.startsWith('_')) continue;
+            if (!t.device_token) { ftStartSync(); break; }
+        }
+    }
+
+    function ftSave() { localStorage.setItem(FT_KEY, JSON.stringify(ftTimers)); }
+
+    function updateToggleAnimation() {
+        const toggle = document.getElementById('ft-toggle');
+        if (!toggle) return;
+        const timerEntries = Object.entries(ftTimers).filter(([sid, t]) => !sid.startsWith('_') && t && typeof t === 'object');
+        const hasRunning = timerEntries.some(([sid, t]) => t.status === 'running');
+        toggle.classList.toggle('running', hasRunning);
+    }
+
+    function ftRender() {
+        const list = document.getElementById('ft-list');
+        const toggle = document.getElementById('float-timer');
+        const dot = document.getElementById('ft-dot');
+        const inputArea = document.getElementById('ft-input-area');
+        const timerEntries = Object.entries(ftTimers).filter(([sid, t]) => !sid.startsWith('_') && t && typeof t === 'object');
+        const hasActive = timerEntries.some(([sid, t]) => t.status === 'running' || t.status === 'paused');
+        const hasContext = ftTimers._checkRecordId && ftTimers._groupId;
+        // 有计时条目或已签到（可添加新计时）时显示悬浮窗
+        if (timerEntries.length === 0 && !hasContext) { toggle.classList.remove('show'); return; }
+        toggle.classList.add('show');
+        updateToggleAnimation();
+        let html = '';
+        for (const [sid, t] of timerEntries) {
+            const isRunning = t.status === 'running';
+            const isReadOnly = !t.device_token;  // 无 token = 其他设备创建的，只读
+            const actionBtn = isReadOnly
+                ? `<span style="font-size:11px;color:var(--text-secondary);padding:4px 8px;">📱 其他设备操作中</span>`
+                : (isRunning
+                    ? `<button class="ft-pause" onclick="ftPause('${sid}')">暂停</button>`
+                    : `<button class="ft-resume" onclick="ftResume('${sid}')">继续</button>`);
+            const endBtn = isReadOnly
+                ? ''
+                : `<button class="ft-end" onclick="ftEnd('${sid}')">结束</button>`;
+            html += `<div class="ft-item"><div><div class="ft-name">${escHtml(t.title)}</div><div class="ft-time" id="ft-time-${sid}">${ftFormat(t.seconds)}</div></div><div class="ft-actions">${actionBtn}${endBtn}</div></div>`;
+        }
+        if (list) list.innerHTML = html;
+        if (inputArea) inputArea.style.display = (ftTimers._checkRecordId && ftTimers._groupId) ? 'flex' : 'none';
+    }
+
+    function ftStartAllIntervals() {
+        for (const [sid, t] of Object.entries(ftTimers)) {
+            if (sid.startsWith('_') || !t || typeof t !== 'object') continue;
+            // 只读模式不跑本地计时，由服务端同步驱动
+            if (t.status === 'running' && t.device_token) ftStartInterval(sid);
+        }
+    }
+
+    function ftStartInterval(sid) {
+        if (ftIntervals[sid]) return;
+        ftIntervals[sid] = setInterval(() => {
+            if (ftTimers[sid] && ftTimers[sid].status === 'running') {
+                ftTimers[sid].seconds++;
+                ftTimers[sid].lastTick = Math.floor(Date.now() / 1000);
+                const el = document.getElementById('ft-time-' + sid);
+                if (el) el.textContent = ftFormat(ftTimers[sid].seconds);
+            }
+        }, 1000);
+    }
+
+    function ftStopInterval(sid) {
+        if (ftIntervals[sid]) { clearInterval(ftIntervals[sid]); delete ftIntervals[sid]; }
+    }
+
+    async function ftStart() {
+        if (_ftStarting) return;  // 防抖：正在请求中，忽略重复点击
+        const input = document.getElementById('ft-input');
+        const title = input.value.trim();
+        if (!title) return;
+        const gid = ftTimers._groupId;
+        const crid = ftTimers._checkRecordId;
+        if (!gid || !crid) return;
+        _ftStarting = true;
+        try {
+            const form = new FormData();
+            form.append('group_id', gid);
+            form.append('check_record_id', crid);
+            form.append('title', title);
+            const resp = await fetch('/session/start', {method:'POST',body:form});
+            const data = await resp.json();
+            if (data.ok) {
+                input.value = '';
+                ftTimers[data.session_id] = {
+                    title, seconds:0, status:'running',
+                    lastTick:Math.floor(Date.now()/1000),
+                    device_token: data.device_token
+                };
+                // 持久化 token，登出不丢失
+                const tokens = JSON.parse(localStorage.getItem(TK_KEY) || '{}');
+                tokens[data.session_id] = data.device_token;
+                localStorage.setItem(TK_KEY, JSON.stringify(tokens));
+                ftSave(); ftRender(); ftStartInterval(data.session_id);
+                updateToggleAnimation();
+            } else {
+                alert(data.msg);
+            }
+        } finally {
+            _ftStarting = false;
+        }
+    }
+
+    async function ftPause(sid) {
+        ftStopInterval(sid);
+        const form = new FormData();
+        form.append('device_token', ftTimers[sid].device_token || '');
+        const resp = await fetch('/session/' + sid + '/pause', {method:'POST', body:form});
+        const data = await resp.json();
+        if (data.ok && data.duration !== undefined) {
+            ftTimers[sid].seconds = data.duration;
+        } else if (!data.ok) {
+            alert(data.msg); return;
+        }
+        ftTimers[sid].status = 'paused';
+        ftSave(); ftRender();
+        updateToggleAnimation();
+    }
+
+    async function ftResume(sid) {
+        const form = new FormData();
+        form.append('device_token', ftTimers[sid].device_token || '');
+        const resp = await fetch('/session/' + sid + '/resume', {method:'POST', body:form});
+        const data = await resp.json();
+        if (!data.ok) { alert(data.msg); return; }
+        ftTimers[sid].status = 'running';
+        ftTimers[sid].lastTick = Math.floor(Date.now() / 1000);
+        ftSave(); ftRender();
+        ftStartInterval(sid);
+        updateToggleAnimation();
+    }
+
+    async function ftEnd(sid) {
+        ftStopInterval(sid);
+        const form = new FormData();
+        form.append('device_token', ftTimers[sid].device_token || '');
+        const resp = await fetch('/session/' + sid + '/complete', {method:'POST', body:form});
+        const data = await resp.json();
+        if (data.ok && data.duration !== undefined) {
+            ftTimers[sid].seconds = data.duration;
+        } else if (!data.ok) {
+            alert(data.msg); return;
+        }
+        // 清理持久化 token
+        const tokens = JSON.parse(localStorage.getItem(TK_KEY) || '{}');
+        delete tokens[sid];
+        localStorage.setItem(TK_KEY, JSON.stringify(tokens));
+        setTimeout(() => {
+            delete ftTimers[sid];
+            ftSave(); ftRender();
+            updateToggleAnimation();
+        }, 1500);
+    }
+
+    window.ftSetContext = function(checkRecordId, groupId) {
+        ftTimers._checkRecordId = checkRecordId;
+        ftTimers._groupId = groupId;
+        ftSave(); ftRender();
+        // 如果有只读计时器（从 localStorage 恢复的），启动同步以检测远端是否已结束
+        for (const [sid, t] of Object.entries(ftTimers)) {
+            if (sid.startsWith('_')) continue;
+            if (!t.device_token) { ftStartSync(); break; }
+        }
+    };
+
+    window.ftClearContext = function() {
+        for (const [sid, t] of Object.entries(ftTimers)) {
+            if (sid.startsWith('_')) continue;
+            ftStopInterval(sid);
+            fetch('/session/' + sid + '/complete', { method: 'POST', keepalive: true });
+        }
+        ftTimers = {};
+        ftSave(); ftRender();
+        updateToggleAnimation();
+    };
+
+    // 从服务端恢复计时器（登录后 / 页面刷新时调用）
+    window.ftRestoreFromServer = function(sessions) {
+        if (!sessions || !sessions.length) return;
+        // 先停止所有本地计时，以服务端数据为准
+        for (const sid of Object.keys(ftTimers)) {
+            if (sid.startsWith('_')) continue;
+            ftStopInterval(sid);
+        }
+        // 读取持久化的 token（登出不丢失）
+        const savedTokens = JSON.parse(localStorage.getItem(TK_KEY) || '{}');
+        const now = Math.floor(Date.now() / 1000);
+        for (const s of sessions) {
+            let seconds = s.duration || 0;
+            if (s.status === 'running' && s.start_ts) {
+                const startTs = parseInt(s.start_ts);
+                seconds += (now - startTs);
+            }
+            // 从持久化存储或本地 ftTimers 中恢复 token
+            const existingToken = savedTokens[s.id] || (ftTimers[s.id] && ftTimers[s.id].device_token) || '';
+            ftTimers[s.id] = {
+                title: s.title,
+                seconds: seconds,
+                status: s.status,
+                lastTick: s.status === 'running' ? now : 0,
+                device_token: existingToken  // 空字符串 = 只读
+            };
+        }
+        ftSave(); ftRender();
+        ftStartAllIntervals();
+        updateToggleAnimation();
+        ftStartSync();
+    };
+
+    // 定时同步服务端状态（只读模式下每 2 秒同步一次）
+    let _ftLastSync = 0;
+    function ftStartSync() {
+        if (ftSyncInterval) return;
+        ftSyncInterval = setInterval(async () => {
+            let hasReadOnly = false;
+            for (const [sid, t] of Object.entries(ftTimers)) {
+                if (sid.startsWith('_')) continue;
+                if (!t.device_token) { hasReadOnly = true; break; }
+            }
+            if (!hasReadOnly) return;
+            const crid = ftTimers._checkRecordId;
+            if (!crid) return;
+            try {
+                const resp = await fetch('/session/sync/' + crid);
+                const data = await resp.json();
+                if (data.ok && data.sessions) {
+                    _ftLastSync = Math.floor(Date.now() / 1000);
+                    ftSyncWithServer(data.sessions);
+                }
+            } catch (e) {}
+        }, 2000);
+    }
+
+    function ftStopSync() {
+        if (ftSyncInterval) { clearInterval(ftSyncInterval); ftSyncInterval = null; }
+    }
+
+    function ftSyncWithServer(sessions) {
+        const now = Math.floor(Date.now() / 1000);
+        const serverMap = {};
+        for (const s of sessions) { serverMap[s.id] = s; }
+
+        let hasRemoved = false;
+        for (const [sid, t] of Object.entries(ftTimers)) {
+            if (sid.startsWith('_')) continue;
+            if (t.device_token) continue; // 本设备掌控的不管
+
+            const s = serverMap[sid];
+            if (!s || s.status === 'completed') {
+                // 服务端已结束或不存在，本地移除
+                delete ftTimers[sid];
+                hasRemoved = true;
+                continue;
+            }
+            // 用服务端数据更新
+            let seconds = s.duration || 0;
+            if (s.status === 'running' && s.start_ts) {
+                seconds += (now - parseInt(s.start_ts));
+            }
+            t.seconds = seconds;
+            t.status = s.status;
+        }
+        ftSave(); ftRender();
+
+        // 有计时器被移除，刷新页面显示报告
+        if (hasRemoved) {
+            setTimeout(() => location.reload(), 800);
+        }
+    }
+
+    function toggleFloatPanel() {
+        document.getElementById('ft-panel').classList.toggle('open');
+    }
+
+    window.ftLogout = function() {
+        // 退出登录前：清除本地存储，计时器不做任何操作（不暂停不结束）
+        for (const [sid, t] of Object.entries(ftTimers)) {
+            if (sid.startsWith('_')) continue;
+            ftStopInterval(sid);
+        }
+        ftStopSync();
+        ftTimers = {};
+        localStorage.removeItem(FT_KEY);
+        // 注意：不删除 TK_KEY，token 保留以便下次登录恢复控制权
+    };
+
+    ftLoad();
+    window.addEventListener('beforeunload', () => {
+        ftSave();
+    });
+
+    // ========== 番茄变色 + 叶子变色 + 粒子 ==========
+    const ftToggle = document.getElementById('ft-toggle');
+    const ftLeaf = document.querySelector('.ft-leaf');
+    let lastRatio = 0;
+
+    // 番茄颜色插值：红(0%) → 浅橙(25%) → 橙(50%) → 深橙金(75%) → 金(100%)
+    function tomatoColor(ratio) {
+        if (ratio <= 0.25) {
+            const t = ratio / 0.25;
+            // 红 rgb(231,76,60) → 浅橙 rgb(230,126,34)
+            return {
+                hlR: 255, hlG: Math.round(123 + (180 - 123) * t), hlB: Math.round(123 + (100 - 123) * t),
+                br: Math.round(231 + (230 - 231) * t), bg: Math.round(76 + (126 - 76) * t), bb: Math.round(60 + (34 - 60) * t)
+            };
+        } else if (ratio <= 0.5) {
+            const t = (ratio - 0.25) / 0.25;
+            // 浅橙 rgb(230,126,34) → 橙 rgb(243,156,18)
+            return {
+                hlR: 255, hlG: Math.round(180 + (200 - 180) * t), hlB: Math.round(100 + (80 - 100) * t),
+                br: Math.round(230 + (243 - 230) * t), bg: Math.round(126 + (156 - 126) * t), bb: Math.round(34 + (18 - 34) * t)
+            };
+        } else if (ratio <= 0.75) {
+            const t = (ratio - 0.5) / 0.25;
+            // 橙 rgb(243,156,18) → 深橙金 rgb(241,196,15)
+            return {
+                hlR: 255, hlG: Math.round(200 + (210 - 200) * t), hlB: Math.round(80 + (40 - 80) * t),
+                br: Math.round(243 + (241 - 243) * t), bg: Math.round(156 + (196 - 156) * t), bb: Math.round(18 + (15 - 18) * t)
+            };
+        } else {
+            const t = (ratio - 0.75) / 0.25;
+            // 深橙金 rgb(241,196,15) → 金 rgb(255,215,0)
+            return {
+                hlR: 255, hlG: Math.round(210 + (215 - 210) * t), hlB: Math.round(40 + (0 - 40) * t),
+                br: Math.round(241 + (255 - 241) * t), bg: Math.round(196 + (215 - 196) * t), bb: Math.round(15 + (0 - 15) * t)
+            };
+        }
+    }
+
+    // 叶子颜色：绿(0-49%) → 黄绿(50-79%) → 金绿(80-99%) → 金(100%)
+    // 注意：50% 阈值处做明显跳跃，避免渐变太浅看不出
+    function leafColor(ratio) {
+        if (ratio < 0.5) return 'rgb(46,204,113)';  // 绿
+        if (ratio < 0.8) {
+            const t = (ratio - 0.5) / 0.3;
+            // 50% 起点：明显黄绿 rgb(160,210,60)，非原始绿
+            return `rgb(${Math.round(160 + (210 - 160) * t)},${Math.round(210 + (200 - 210) * t)},${Math.round(60 + (30 - 60) * t)})`;
+        }
+        if (ratio < 1) {
+            const t = (ratio - 0.8) / 0.2;
+            return `rgb(${Math.round(210 + (255 - 210) * t)},${Math.round(200 + (215 - 200) * t)},${Math.round(30 + (0 - 30) * t)})`;
+        }
+        return 'rgb(255,215,0)';  // 金
+    }
+
+    function spawnParticle(burst) {
+        const wrapper = ftToggle.parentElement;
+        if (!wrapper) return;
+        const p = document.createElement('span');
+        p.className = 'ft-particle';
+        const angle = Math.random() * Math.PI * 2;
+        const dist = burst ? 25 + Math.random() * 35 : 15 + Math.random() * 20;
+        p.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+        p.style.setProperty('--dy', Math.sin(angle) * dist - 15 + 'px');
+        p.style.left = '50%';
+        p.style.top = '50%';
+        // 粒子颜色
+        if (burst) {
+            p.classList.add('gold');
+        } else {
+            p.classList.add('gold');
+        }
+        wrapper.appendChild(p);
+        setTimeout(() => p.remove(), 1600);
+    }
+
+    function spawnGreenParticle() {
+        const wrapper = ftToggle.parentElement;
+        if (!wrapper) return;
+        const p = document.createElement('span');
+        p.className = 'ft-particle green';
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 10 + Math.random() * 15;
+        p.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+        p.style.setProperty('--dy', Math.sin(angle) * dist - 10 + 'px');
+        p.style.left = '50%';
+        p.style.top = '50%';
+        wrapper.appendChild(p);
+        setTimeout(() => p.remove(), 1600);
+    }
+
+    async function updateTomatoProgress() {
+        try {
+            const resp = await fetch('/api/today_progress');
+            const data = await resp.json();
+            if (!data.ok) return;
+            const ratio = Math.min(data.active / data.goal, 1);
+            const pct = Math.round(ratio * 100);
+
+            // 更新弹窗进度百分比
+            const progEl = document.getElementById('ft-progress');
+            if (progEl) {
+                progEl.textContent = pct + '%';
+                if (ratio >= 1) progEl.style.color = '#F39C12';
+                else progEl.style.color = '';
+            }
+
+            // 番茄本体颜色
+            const c = tomatoColor(ratio);
+            ftToggle.style.background = `radial-gradient(circle at 35% 35%, rgb(${c.hlR},${c.hlG},${c.hlB}), rgb(${c.br},${c.bg},${c.bb}))`;
+
+            // 叶子颜色
+            if (ftLeaf) {
+                ftLeaf.style.background = leafColor(ratio);
+                if (ratio >= 1) {
+                    ftLeaf.classList.add('wiggle');
+                } else {
+                    ftLeaf.classList.remove('wiggle');
+                }
+            }
+
+            // 粒子阶段
+            if (ratio >= 1 && lastRatio < 1) {
+                // 100% 达标：金粒子爆发
+                ftToggle.classList.add('golden');
+                for (let i = 0; i < 16; i++) {
+                    setTimeout(() => spawnParticle(true), i * 50);
+                }
+            } else if (ratio < 1) {
+                ftToggle.classList.remove('golden');
+                if (ratio >= 0.8 && Math.random() < 0.35) {
+                    // 80-99%：金色粒子增多
+                    spawnParticle(false);
+                } else if (ratio >= 0.5 && Math.random() < 0.12) {
+                    // 50-79%：零星绿色粒子
+                    spawnGreenParticle();
+                }
+                // 0-49%：无粒子
+            }
+            lastRatio = ratio;
+        } catch(e) {}
+    }
+    updateTomatoProgress();
+    setInterval(updateTomatoProgress, 10000);
+
+    // 页面恢复可见时强制同步
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible') return;
+        let hasReadOnly = false;
+        for (const [sid, t] of Object.entries(ftTimers)) {
+            if (sid.startsWith('_')) continue;
+            if (!t.device_token) { hasReadOnly = true; break; }
+        }
+        if (hasReadOnly && ftTimers._checkRecordId) {
+            fetch('/session/sync/' + ftTimers._checkRecordId)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.ok && data.sessions) ftSyncWithServer(data.sessions);
+                }).catch(() => {});
+        }
+    });
+
+    // 底部Tab当前页高亮
+    document.addEventListener('DOMContentLoaded', function() {
+        const path = window.location.pathname;
+        const tabMap = {
+            '/dashboard': 'tab-dashboard',
+            '/groups': 'tab-groups',
+            '/report': 'tab-report',
+            '/settings': 'tab-settings'
+        };
+        for (const [p, id] of Object.entries(tabMap)) {
+            if (path.startsWith(p)) {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('active');
+            }
+        }
+    });
+    </script>
+    {% endif %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

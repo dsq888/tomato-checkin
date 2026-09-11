@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}我的小组 - 番茄打卡{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        我的小组
+        <div style="display: flex; gap: 8px;">
+            <a href="/groups/join" class="btn btn-outline btn-sm">加入小组</a>
+            {% if session.role == 'admin' %}
+            <a href="/groups/create" class="btn btn-primary btn-sm">创建小组</a>
+            {% endif %}
+        </div>
+    </div>
+    {% if groups %}
+    <div class="group-grid">
+        {% for g in groups %}
+        <a href="/groups/{{ g.id }}" class="group-card">
+            <div class="gc-name">{{ g.name }}</div>
+            <div class="gc-desc">{{ g.description or '暂无描述' }}</div>
+            <div class="gc-meta">创建者：{{ g.creator_name }} · 邀请码：{{ g.invite_code }}</div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="icon">📚</div>
+        <p>还没有加入任何小组</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

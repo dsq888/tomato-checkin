@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}加入小组 - 学习打卡系统{% endblock %}
+{% block content %}
+<div class="form">
+    <div class="card">
+        <div style="text-align: center; font-size: 48px; margin-bottom: 8px;">🍅</div>
+        <div class="card-header">番茄打卡 - 加入小组</div>
+        {% if error %}<div class="msg msg-error">{{ error }}</div>{% endif %}
+        <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">输入小组创建者分享的邀请码即可加入</p>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label>邀请码</label>
+                <input type="text" name="invite_code" required autofocus placeholder="如：a1b2c3d4">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">加入</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

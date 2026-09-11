@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% block title %}{{ group.name }} - 番茄打卡{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+{% block head %}
+<script>
+// HTML 转义，防止 XSS
+function escHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
+function showMsg(el, type, text) {
+    el.innerHTML = `<div class="msg msg-${type}">${escHtml(text)}</div>`;
+}
+
+async function doCheckin() {
+    const btn = document.getElementById("checkin-btn");
+    btn.disabled = true; btn.textContent = "打卡中...";
+    const msgEl = document.getElementById("checkin-msg"); msgEl.innerHTML = "";
+    try {
+        const resp = await fetch("/checkin/{{ group.id }}", { method: "POST" });
+        const text = await resp.text();
+        let data;
+        try { data = JSON.parse(text); } catch(e) { data = null; }
+        if (data && data.ok) {
+            showMsg(msgEl, 'success', data.msg);
+            if (typeof ftSetContext === 'function') ftSetContext(data.record_id, {{ group.id }});
+            setTimeout(() => location.reload(), 1200);
+        } else if (data) {
+            showMsg(msgEl, 'error', data.msg);
+        } else {
+            showMsg(msgEl, 'error', `服务器错误(${resp.status}): ${text.substring(0,200)}`);
+        }
+    } catch (e) { showMsg(msgEl, 'error', '请求失败: ' + e.message); }
+    btn.disabled = false; btn.textContent = "开始打卡";
+}
+
+async function doCheckout(recordId) {
+    const btn = document.getElementById(`checkout-btn-${recordId}`);
+    btn.disabled = true;
+    const msgEl = document.getElementById("checkin-msg");
+    try {
+        const resp = await fetch(`/checkout/${recordId}`, { method: "POST" });
+        const data = await resp.json();
+        if (data.ok) {
+            showMsg(msgEl, 'success', data.msg);
+            if (typeof ftClearContext === 'function') ftClearContext();
+            setTimeout(() => location.reload(), 1200);
+        } else { showMsg(msgEl, 'error', data.msg); btn.disabled = false; }
+    } catch (e) { showMsg(msgEl, 'error', '请求失败: ' + e.message); btn.disabled = false; }
+}
+
+// 每日目标调整
+async function adjustGoal() {
+    const newGoal = prompt('设置今日学习目标（分钟）：', {{ daily_goal // 60 }});
+    if (!newGoal) return;
+    const seconds = parseInt(newGoal) * 60;
+    if (isNaN(seconds) || seconds < 5) { alert('至少5分钟'); return; }
+    const form = new FormData();
+    form.append('seconds', seconds);
+    const resp = await fetch('/api/daily_goal', { method: 'POST', body: form });
+    const data = await resp.json();
+    if (data.ok) {
+        if (typeof updateTomatoProgress === 'function') updateTomatoProgress();
+        location.reload();
+    }
+}
+
+// 打卡日历
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth() + 1;
+async function loadCalendar() {
+    const resp = await fetch(`/api/group/{{ group.id }}/calendar?year=${calYear}&month=${calMonth}`);
+    const data = await resp.json();
+    if (!data.ok) return;
+    document.getElementById('cal-month-label').textContent = calYear + '年' + calMonth + '月';
+    const grid = document.getElementById('heatmap-grid');
+    const today = new Date();
+    const isCurrentMonth = (today.getFullYear() === calYear && today.getMonth() + 1 === calMonth);
+    const todayDay = today.getDate();
+    const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+    const firstDay = new Date(calYear, calMonth - 1, 1).getDay(); // 0=Sun
+    const maxCheckers = Math.max(1, ...Object.values(data.data).map(a => a.length));
+    const weekLabels = ['日','一','二','三','四','五','六'];
+
+    // 传统日历网格：先放 7 个星期标题，再放日期格子
+    let html = '';
+    for (let wd = 0; wd < 7; wd++) {
+        html += `<span class="heatmap-weekday-header">${weekLabels[wd]}</span>`;
+    }
+    // 前面的空白格
+    for (let i = 0; i < firstDay; i++) {
+        html += '<span></span>';
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+        const checkers = data.data[d] || [];
+        const count = checkers.length;
+        let level = 0;
+        if (count > 0) {
+            if (count >= maxCheckers * 0.7) level = 3;
+            else if (count >= maxCheckers * 0.4) level = 2;
+            else level = 1;
+        }
+        const isToday = isCurrentMonth && d === todayDay;
+        const names = checkers.map(c => escHtml(c.nickname)).join('、') || '无人打卡';
+        html += `<span class="heatmap-cell level-${level}${isToday ? ' today' : ''}" title="${d}日">
+            <span class="heatmap-tooltip">${d}日: ${names}</span>
+        </span>`;
+    }
+    grid.innerHTML = html;
+}
+function prevMonth() { calMonth--; if(calMonth<1){calMonth=12;calYear--;} loadCalendar(); }
+function nextMonth() { calMonth++; if(calMonth>12){calMonth=1;calYear++;} loadCalendar(); }
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadCalendar();
+});
+</script>
+{% endblock %}
+{% block content %}
+<!-- 第1排：小组信息横幅 -->
+<div class="card" style="background: linear-gradient(135deg, #FFF5F5 0%, #FFFFF0 100%);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <div>
+            <h2 style="margin:0; font-size: 20px;">{{ group.name }}</h2>
+            <p style="margin:4px 0 0; color: var(--text-secondary); font-size: 13px;">
+                {{ group.description or '暂无描述' }} · 创建者：{{ group.creator_name }}
+            </p>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <span class="tag tag-tomato" style="font-size:13px;">邀请码：{{ group.invite_code }}</span>
+            {% if is_admin %}
+            <form method="POST" action="/groups/{{ group.id }}/delete" onsubmit="return confirm('确定要删除小组「{{ group.name }}」吗？')" style="margin: 0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-danger btn-sm">删除</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 第2排：打卡区域（独占全宽） -->
+<div class="card" style="text-align: center;">
+    <div class="card-header" style="justify-content: center;">
+        打卡
+        <span style="font-size:13px;color:var(--text-secondary);margin-left:12px;">
+            今日目标：{{ (daily_goal // 60) }}分钟
+            <a href="javascript:adjustGoal()" style="color:var(--tomato);font-size:12px;margin-left:4px;">调整</a>
+        </span>
+    </div>
+    <div id="checkin-msg"></div>
+    {% if active_checkin %}
+    <div class="msg msg-info" style="justify-content: center;">
+        正在学习中... 签到时间：{{ active_checkin.check_in_time.strftime('%H:%M:%S') }}
+        <button class="btn btn-danger btn-sm" id="checkout-btn-{{ active_checkin.id }}" onclick="doCheckout({{ active_checkin.id }})" style="margin-left: 12px;">结束学习（签退）</button>
+    </div>
+    <p style="font-size: 13px; color: var(--text-secondary); margin-top: 8px;">点击右下角悬浮按钮添加学习内容并计时</p>
+    {% else %}
+    <div style="padding: 30px 0;">
+        <button class="btn-tomato-checkin" id="checkin-btn" onclick="doCheckin()">开始打卡</button>
+        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 16px;">随时随地，点击即可开始学习</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 第3排：成员列表 + 排行榜 | 打卡日历 -->
+<div class="side-by-side">
+    <div class="card">
+        <div class="card-header">
+            成员（{{ members|length }}）
+            <a href="/ranking/{{ group.id }}" class="btn btn-outline btn-sm">排行榜</a>
+        </div>
+        {% for m in members %}
+        <div class="list-item">
+            <div>
+                <span class="list-item-title">
+                    {{ m.nickname }}
+                    {% if m.id in member_tags %}<span class="style-tag">{{ member_tags[m.id] }}</span>{% endif %}
+                </span>
+                <span class="list-item-sub">加入于 {{ m.joined_at.strftime('%Y-%m-%d') }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            打卡日历
+            <div class="calendar-nav" style="margin:0;">
+                <button onclick="prevMonth()">◀</button>
+                <span class="cal-month" id="cal-month-label"></span>
+                <button onclick="nextMonth()">▶</button>
+            </div>
+        </div>
+        <div id="heatmap-grid" class="heatmap-grid"></div>
+        <div class="heatmap-legend">
+            <span class="legend-cell level-0"></span> 无人
+            <span class="legend-cell level-1"></span> 较少
+            <span class="legend-cell level-2"></span> 一般
+            <span class="legend-cell level-3"></span> 全员
+        </div>
+    </div>
+</div>
+
+<!-- 第4排：我的打卡记录（可折叠） -->
+<div class="card card-collapsible" id="records-card">
+    <div class="card-header" onclick="toggleCollapse('records-card')">
+        我的打卡记录
+        <span class="collapse-arrow">▼</span>
+    </div>
+    <div class="card-body-collapse" id="records-card-body">
+    {% if records %}
+    <table class="rank-table">
+        <thead>
+            <tr><th>签到时间</th><th>签退时间</th><th>时长</th></tr>
+        </thead>
+        <tbody>
+            {% for r in records %}
+            <tr>
+                <td>{{ r.check_in_time.strftime('%m-%d %H:%M') }}</td>
+                <td>{{ r.check_out_time.strftime('%H:%M') if r.check_out_time else '进行中' }}</td>
+                <td>{{ r.duration | format_duration }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><p>暂无打卡记录</p></div>
+    {% endif %}
+    </div>
+</div>
+
+<script>
+function toggleCollapse(cardId) {
+    var card = document.getElementById(cardId);
+    if (!card) return;
+    var body = card.querySelector('.card-body-collapse');
+    if (!body) return;
+    if (card.classList.contains('collapsed')) {
+        card.classList.remove('collapsed');
+        body.style.maxHeight = body.scrollHeight + 'px';
+        setTimeout(function() { body.style.maxHeight = 'none'; }, 300);
+    } else {
+        body.style.maxHeight = body.scrollHeight + 'px';
+        requestAnimationFrame(function() {
+            body.style.maxHeight = '0px';
+            card.classList.add('collapsed');
+        });
+    }
+}
+// 初始化折叠区域高度
+(function() {
+    var body = document.getElementById('records-card-body');
+    if (body) body.style.maxHeight = 'none';
+})();
+</script>
+{% if active_checkin %}
+<script>
+window.addEventListener('DOMContentLoaded', function() {
+    if (typeof ftSetContext === 'function') ftSetContext({{ active_checkin.id }}, {{ group.id }});
+    // 从服务端恢复计时器（退出登录后重新上线时）
+    var sessions = {{ active_sessions | tojson }};
+    if (sessions.length && typeof ftRestoreFromServer === 'function') {
+        ftRestoreFromServer(sessions);
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

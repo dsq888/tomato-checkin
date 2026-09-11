@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}个人设置 - 番茄打卡{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+{% block content %}
+
+<div class="card">
+    <div class="card-header">个人设置</div>
+
+    <!-- 昵称 -->
+    <form method="POST" action="/settings/nickname" style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 20px; padding: 16px; background: #FFF9F5; border-radius: 10px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group" style="flex: 1; margin: 0;">
+            <label>昵称</label>
+            <input type="text" name="nickname" value="{{ session.nickname }}" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="height: 42px;">保存</button>
+    </form>
+
+    <!-- 密码 -->
+    <form method="POST" action="/settings/password" style="padding: 16px; background: #FFF9F5; border-radius: 10px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div style="font-weight: 500; margin-bottom: 12px;">修改密码</div>
+        {% if pw_error %}<div class="msg msg-error">{{ pw_error }}</div>{% endif %}
+        <div class="form-group">
+            <label>旧密码</label>
+            <input type="password" name="old_password" required>
+        </div>
+        <div class="form-group">
+            <label>新密码（至少6位）</label>
+            <input type="password" name="new_password" required minlength="6">
+        </div>
+        <button type="submit" class="btn btn-primary">修改密码</button>
+    </form>
+
+    <!-- 退出登录 -->
+    <div style="margin-top: 24px; padding: 16px; background: #FFF5F5; border-radius: 10px; text-align: center;">
+        <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">退出当前账号，下次需要重新登录</p>
+        <a href="/logout" class="btn btn-secondary" onclick="if(typeof ftLogout==='function')ftLogout()" style="background: #e74c3c; color: #fff; border: none;">退出登录</a>
+    </div>
+</div>
+
+{% endblock %}

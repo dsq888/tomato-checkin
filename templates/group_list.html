@@ -7,9 +7,7 @@
         我的小组
         <div style="display: flex; gap: 8px;">
             <a href="/groups/join" class="btn btn-outline btn-sm">加入小组</a>
-            {% if session.role == 'admin' %}
             <a href="/groups/create" class="btn btn-primary btn-sm">创建小组</a>
-            {% endif %}
         </div>
     </div>
     {% if groups %}

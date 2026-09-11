@@ -1,6 +1,9 @@
 """学习打卡系统 - Flask 主应用"""
 
 import os
+import re
+import time
+from collections import defaultdict
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from functools import wraps
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -36,6 +39,46 @@ if not app.debug:
     ))
     app.logger.addHandler(handler)
     app.logger.setLevel(logging.INFO)
+
+# ==================== 安全：频率限制 ====================
+
+# 内存频率限制存储：{(ip, path): [timestamp, ...]}
+# 生产环境可换 Redis，当前单机部署够用
+_rate_limit_store: dict = defaultdict(list)
+
+
+def rate_limit(max_requests: int = 5, window: int = 60):
+    """简单频率限制装饰器：同一 IP 在 window 秒内最多 max_requests 次请求。
+    用于防止登录暴力破解、注册轰炸。"""
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            ip = (request.headers.get("X-Real-IP")
+                  or request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+                  or request.remote_addr
+                  or "unknown")
+            now = time.time()
+            key = (ip, request.path)
+            # 清理过期记录
+            _rate_limit_store[key] = [t for t in _rate_limit_store[key] if now - t < window]
+            if len(_rate_limit_store[key]) >= max_requests:
+                app.logger.warning(f"频率限制触发: IP={ip} path={request.path}")
+                return "请求过于频繁，请稍后再试", 429
+            _rate_limit_store[key].append(now)
+            return f(*args, **kwargs)
+        return decorated
+    return decorator
+
+
+# ==================== 安全：输入校验 ====================
+
+# 用户名：2-20 位，字母/数字/下划线/中文
+_USERNAME_RE = re.compile(r"^[\w\u4e00-\u9fa5]{2,20}$")
+
+
+def is_valid_username(username: str) -> bool:
+    return bool(_USERNAME_RE.match(username))
+
 
 # ==================== 装饰器 ====================
 
@@ -91,6 +134,7 @@ def index():
 
 
 @app.route("/register", methods=["GET", "POST"])
+@rate_limit(max_requests=3, window=60)  # 每分钟最多 3 次注册，防止注册轰炸
 def register():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
@@ -100,6 +144,12 @@ def register():
             return render_template("register.html", error="用户名和密码不能为空")
         if len(password) < 6:
             return render_template("register.html", error="密码至少6位")
+        if len(password) > 64:
+            return render_template("register.html", error="密码最多64位")
+        if not is_valid_username(username):
+            return render_template("register.html", error="用户名2-20位，仅限字母、数字、下划线、中文")
+        if len(nickname) > 30:
+            return render_template("register.html", error="昵称最多30字符")
         if models.create_user(username, password, nickname):
             return redirect(url_for("login", msg="注册成功，请登录"))
         return render_template("register.html", error="用户名已存在")
@@ -107,10 +157,11 @@ def register():
 
 
 @app.route("/login", methods=["GET", "POST"])
+@rate_limit(max_requests=5, window=60)  # 每分钟最多 5 次登录，防止暴力破解
 def login():
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "").strip()
+        username = request.form.get("username", "").strip()[:64]
+        password = request.form.get("password", "").strip()[:128]
         user = models.verify_user(username, password)
         if user:
             session["user_id"] = user["id"]
@@ -190,6 +241,8 @@ def save_countdown():
     title = request.form.get("title", "").strip()
     target_date = request.form.get("target_date", "").strip()
     if title and target_date:
+        if len(title) > 50:
+            return "目标名称最多50字符", 400
         models.save_countdown(session["user_id"], title, target_date)
     return redirect(url_for("dashboard"))
 
@@ -211,13 +264,17 @@ def group_list():
 
 
 @app.route("/groups/create", methods=["GET", "POST"])
-@admin_required
+@login_required
 def create_group():
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         desc = request.form.get("description", "").strip()
         if not name:
             return render_template("group_create.html", error="小组名称不能为空")
+        if len(name) > 50:
+            return render_template("group_create.html", error="小组名称最多50字符")
+        if len(desc) > 200:
+            return render_template("group_create.html", error="小组描述最多200字符")
         group = models.create_group(name, desc, session["user_id"])
         return redirect(url_for("group_detail", group_id=group["id"]))
     return render_template("group_create.html")
@@ -228,6 +285,8 @@ def create_group():
 def join_group():
     if request.method == "POST":
         code = request.form.get("invite_code", "").strip()
+        if len(code) > 20:
+            return render_template("join_group.html", error="邀请码格式无效")
         group = models.get_group_by_invite_code(code)
         if not group:
             return render_template("join_group.html", error="邀请码无效")
@@ -480,6 +539,11 @@ def forbidden(e):
 @app.errorhandler(404)
 def not_found(e):
     return render_template("error.html", code=404, msg="页面不存在"), 404
+
+
+@app.errorhandler(429)
+def too_many_requests(e):
+    return render_template("error.html", code=429, msg="请求过于频繁，请稍后再试"), 429
 
 
 @app.errorhandler(500)

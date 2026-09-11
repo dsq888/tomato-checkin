@@ -139,13 +139,24 @@ bash start.sh
 
 ## 📸 功能预览
 
-| 页面 | 说明 |
-|------|------|
-| 首页 | 励志鸡汤 + 倒计时目标 |
-| 小组详情 | 签到签退 + 悬浮计时器 |
-| 排行榜 | 总时长 / 打卡天数 / 连续天数 |
-| 学习报告 | 饼图展示各内容占比 |
-| 个人设置 | 修改昵称、密码 |
+<table>
+  <tr>
+    <td width="50%" align="center"><b>首页</b> — 励志鸡汤 + 倒计时目标</td>
+    <td width="50%" align="center"><b>小组详情</b> — 一键签到 + 打卡日历</td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><img src="docs/dashboard.png" alt="首页" width="400"></td>
+    <td width="50%" align="center"><img src="docs/group-detail.png" alt="小组详情" width="400"></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><b>学习中状态</b> — 悬浮番茄计时器 + 实时记录</td>
+    <td width="50%" align="center"><b>学习报告</b> — 饼图展示各内容时长占比</td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><img src="docs/group-studying.png" alt="学习中状态" width="400"></td>
+    <td width="50%" align="center"><img src="docs/report.png" alt="学习报告" width="400"></td>
+  </tr>
+</table>
 
 ## 🔒 安全说明
 

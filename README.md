@@ -89,8 +89,8 @@
 ### 2. 克隆仓库
 
 ```bash
-git clone https://github.com/dsq888/DSQ.git
-cd DSQ
+git clone https://github.com/dsq888/tomato-checkin.git
+cd tomato-checkin
 ```
 
 ### 3. 安装依赖
